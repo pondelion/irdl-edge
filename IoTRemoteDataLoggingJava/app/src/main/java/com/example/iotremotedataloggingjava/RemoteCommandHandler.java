@@ -1,0 +1,92 @@
+package com.example.iotremotedataloggingjava;
+
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.ImageFormat;
+import android.graphics.Matrix;
+import android.graphics.Rect;
+import android.graphics.YuvImage;
+import android.hardware.Camera;
+import android.util.Log;
+
+import androidx.annotation.NonNull;
+
+import com.amazonaws.mobileconnectors.iot.AWSIotMqttNewMessageCallback;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.charset.Charset;
+
+public class RemoteCommandHandler implements AWSIotMqttNewMessageCallback {
+    public static final String TAG = "RemoteCommandHandler";
+    private LoggingService mLoggingService;
+    private S3Storage mS3Storage;
+
+    RemoteCommandHandler(LoggingService loggingService) {
+        mLoggingService = loggingService;
+        mS3Storage = new S3Storage(mLoggingService.getApplicationContext());
+    }
+
+    @Override
+    public void onMessageArrived(String topic, byte[] data) {
+        final String msgStr = new String(data, Charset.forName("UTF-8"));
+        Log.d(TAG, topic + ":" + msgStr);
+        JSONObject msgJson;
+        try {
+            msgJson = new JSONObject(msgStr);
+            //Log.d(TAG, "msgJson.meeesgae : " + msgJson.getString("message"));
+            if (msgJson.has("cmd")) {
+//                text += "\n" + msgJson.getString("cmd");
+                executeCommand(msgJson.getString("cmd"), msgJson);
+            }
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void executeCommand(@NonNull String cmd, JSONObject msgJson) {
+        switch (cmd) {
+            case "TAKE_PICTURE":
+                Log.d(TAG, "[TAKE_PICTURE] starting camera");
+                mLoggingService.startCameraCapture(new Camera.PreviewCallback() {
+                    @Override
+                    public void onPreviewFrame(byte[] bytes, Camera camera) {
+                        Log.d(TAG, "onPreviewFrame : " + mLoggingService.getFilesDir());
+                        mLoggingService.stopCameraCapture();
+                        final String tmpFilePath = mLoggingService.getFilesDir() + "/camera_image.png";
+                        ImageProcess.saveCameraBytesToPng(bytes, camera, 224, 224, tmpFilePath);
+                        if (msgJson.has("s3_fileptah")) {
+                            try {
+                                mS3Storage.saveFile(tmpFilePath, msgJson.getString("s3_fileptah"));
+                            } catch (JSONException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                });
+                break;
+            case "START_LOGGING":
+                Log.d(TAG, "[START_LOGGING] starting logging");
+                if (!msgJson.has("target")) {
+                    Log.d(TAG, "[START_LOGGING] target is not specified, ignoring command");
+                    break;
+                }
+                break;
+            case "STOP_LOGGING":
+                Log.d(TAG, "[STOP_LOGGING] stopping logging");
+                if (!msgJson.has("target")) {
+                    Log.d(TAG, "[START_LOGGING] target is not specified, ignoring command");
+                    break;
+                }
+                break;
+        }
+
+    }
+
+}
