@@ -11,6 +11,7 @@ import com.amazonaws.mobileconnectors.iot.AWSIotMqttClientStatusCallback;
 import com.amazonaws.mobileconnectors.iot.AWSIotMqttManager;
 import com.amazonaws.mobileconnectors.iot.AWSIotMqttNewMessageCallback;
 import com.amazonaws.mobileconnectors.iot.AWSIotMqttQos;
+import com.google.gson.JsonObject;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -136,5 +137,12 @@ public class MQTTConnector {
         }
         JSONObject json = new JSONObject(data);
         this.mMQTTManager.publishData(json.toString().getBytes(), topic, AWSIotMqttQos.QOS0);
+    }
+
+    public void publishJson(@NonNull JSONObject data, @NonNull String topic) {
+        if (this.mMQTTManager == null | !mIsConnected) {
+            return;
+        }
+        this.mMQTTManager.publishData(data.toString().getBytes(), topic, AWSIotMqttQos.QOS0);
     }
 }

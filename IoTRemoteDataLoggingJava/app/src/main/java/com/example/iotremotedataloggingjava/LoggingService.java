@@ -17,6 +17,7 @@ import android.view.WindowManager;
 
 import androidx.annotation.Nullable;
 
+import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -45,8 +46,10 @@ public class LoggingService extends Service {
         String title = context.getString(R.string.app_name);
 
         int requestCode = 1;
+//        PendingIntent pendingIntent =
+//                PendingIntent.getActivity(context, requestCode, intent, PendingIntent.FLAG_UPDATE_CURRENT);
         PendingIntent pendingIntent =
-                PendingIntent.getActivity(context, requestCode, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+                PendingIntent.getActivity(context, requestCode, intent, PendingIntent.FLAG_IMMUTABLE);
 
         NotificationManager notificationManager =
                 (NotificationManager)context.getSystemService(Context.NOTIFICATION_SERVICE);
@@ -72,7 +75,7 @@ public class LoggingService extends Service {
         mMQTTConnector.connectSubscribe(new RemoteCommandHandler(this));
 
         mLocationLogging.startLocationLogging();
-//        mSensorLogging.startSensorLogging();
+        startSensorLogging(null);
 
         mCamera = getCameraInstance();
         mPreview = new CameraPreview(getApplicationContext(), mCamera);
@@ -85,8 +88,15 @@ public class LoggingService extends Service {
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
                         | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
                 PixelFormat.TRANSLUCENT);
-        params.height = 600;
-        params.width = 600;
+
+        if (LoggingSettings.DEBUG) {
+            params.height = 600;
+            params.width = 600;
+        } else {
+            params.height = 1;
+            params.width = 1;
+        }
+
         wm.addView(mPreview, params);
 
 //        startCameraCapture(new Camera.PreviewCallback() {
@@ -114,18 +124,18 @@ public class LoggingService extends Service {
         Log.d(TAG, "onDestroy()");
         super.onDestroy();
         mLocationLogging.stopLocationLogging();
-        mSensorLogging.stopSensroLogging();
+        stopSensorLogging();
         mMQTTConnector.disconnect();
         stopCameraCapture();
         stopSelf();
     }
 
-    public void startSensorLogging() {
-        mSensorLogging.startSensorLogging();
+    public void startSensorLogging(List<Integer> sensorTypes) {
+        mSensorLogging.startSensorLogging(sensorTypes);
     }
 
     public void stopSensorLogging() {
-        mSensorLogging.stopSensroLogging();
+        mSensorLogging.stopSensorLogging();
     }
 
     public void startLocationLogging() {

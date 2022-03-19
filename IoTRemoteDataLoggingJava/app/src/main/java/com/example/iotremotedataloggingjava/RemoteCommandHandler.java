@@ -7,6 +7,8 @@ import android.graphics.Matrix;
 import android.graphics.Rect;
 import android.graphics.YuvImage;
 import android.hardware.Camera;
+import android.media.AudioManager;
+import android.media.ToneGenerator;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
@@ -77,6 +79,18 @@ public class RemoteCommandHandler implements AWSIotMqttNewMessageCallback {
                     Log.d(TAG, "[START_LOGGING] target is not specified, ignoring command");
                     break;
                 }
+                try {
+                    switch (msgJson.getString("target")) {
+                        case "location":
+                            mLoggingService.startLocationLogging();
+                            break;
+                        case "sensor":
+                            mLoggingService.startSensorLogging(null);
+                            break;
+                    }
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
                 break;
             case "STOP_LOGGING":
                 Log.d(TAG, "[STOP_LOGGING] stopping logging");
@@ -84,6 +98,23 @@ public class RemoteCommandHandler implements AWSIotMqttNewMessageCallback {
                     Log.d(TAG, "[START_LOGGING] target is not specified, ignoring command");
                     break;
                 }
+                try {
+                    switch (msgJson.getString("target")) {
+                        case "location":
+                            mLoggingService.stopLocationLogging();
+                            break;
+                        case "sensor":
+                            mLoggingService.stopSensorLogging();
+                            break;
+                    }
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+                break;
+            case "BEEP":
+                ToneGenerator toneGenerator
+                        = new ToneGenerator(AudioManager.STREAM_SYSTEM, ToneGenerator.MAX_VOLUME);
+                toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP);
                 break;
         }
 

@@ -11,7 +11,10 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.HashMap;
+import java.util.Locale;
 
 import static android.content.Context.LOCATION_SERVICE;
 
@@ -22,6 +25,8 @@ public class LocationLogging implements LocationListener {
     private boolean mLoggingEnabled = true;
     private Service mLoggingService;
     private LocationManager mLocationManager;
+    private int mMinUpdateTimeMs = 20*1000;
+    private int mMinUpdateDistanceM = 2;
 
     LocationLogging(MQTTConnector mqttConnector, LoggingService loggingService) {
         mMQTTConnector = mqttConnector;
@@ -33,10 +38,14 @@ public class LocationLogging implements LocationListener {
     public void onLocationChanged(@NonNull Location location) {
         Log.d(TAG, location.getLatitude() + ", " + location.getLongitude());
         if (mLoggingEnabled) {
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault());
+            String datetimeNow = sdf.format(new Date());
             HashMap data = new HashMap();
+            data.put("datetime", datetimeNow);
             data.put("lat", location.getLatitude());
             data.put("lng", location.getLongitude());
-//            mMQTTConnector.publishJson(data, AWSSettings.AWS_IOT_LOCATION_TOPIC_NAME);
+            data.put("device_name", AWSSettings.DEVICE_NAME);
+            mMQTTConnector.publishJson(data, AWSSettings.AWS_IOT_LOCATION_TOPIC_NAME);
             toast(data.toString());
         }
     }
@@ -52,10 +61,8 @@ public class LocationLogging implements LocationListener {
     public void startLocationLogging() {
         Log.d(TAG,"locationStart()");
 
-        int minDistanceM = 2;
-        int minTimeMs = 2000;
         mLocationManager.requestLocationUpdates(
-                LocationManager.GPS_PROVIDER, minTimeMs, minDistanceM, this
+                LocationManager.GPS_PROVIDER, mMinUpdateTimeMs, mMinUpdateDistanceM, this
         );
     }
 
@@ -70,5 +77,13 @@ public class LocationLogging implements LocationListener {
                 Toast.makeText(mLoggingService.getApplicationContext(), msg, Toast.LENGTH_SHORT).show();
             }
         });
+    }
+
+    public void setMinUpdateTime(int timeMs) {
+        this.mMinUpdateTimeMs = timeMs;
+    }
+
+    public void setmMinUpdateDistanceM(int distanceM) {
+        this.mMinUpdateDistanceM = distanceM;
     }
 }
